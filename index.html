@@ -31,7 +31,7 @@
 <div class="app">
   <header class="top">
     <div class="brand"><div class="logo">📍</div><div><h1>よりみちマップ</h1><div class="sub">わたしだけの、行った場所コレクション。</div></div></div>
-    <div class="top-actions"><button class="secondary" id="locateBtn">◎ 現在地</button><button id="shareBtn">↗ シェア</button></div>
+    <div class="top-actions"><button class="secondary" id="locateBtn">◎ 現在地</button><button class="secondary" id="exportBtn">↓ 保存</button><button class="secondary" id="importBtn">↑ 読込</button><input id="importFile" type="file" accept="application/json" hidden><button id="shareBtn">↗ シェア</button></div>
   </header>
   <main class="layout">
     <section class="panel">
@@ -78,14 +78,14 @@
       marker.bindPopup('<b>'+safe(p.name)+'</b><br><small>'+icons[p.category]+' '+labels[p.category]+'</small>'+(p.note?'<br>'+safe(p.note):''));
     });
     $('count').textContent=places.length+'か所';
-    $('placeList').innerHTML=visible.length?visible.map(p=>'<div class="place"><div class="place-icon">'+icons[p.category]+'</div><div class="place-main"><div class="place-name">'+safe(p.name)+'</div><div class="place-meta">'+labels[p.category]+(p.note?' · '+safe(p.note):'')+'</div></div><button class="ghost" data-go="'+p.id+'" aria-label="地図で見る">地図</button><button class="ghost" data-del="'+p.id+'" aria-label="削除">×</button></div>').join(''):'<div class="empty">このカテゴリーの場所はまだありません。</div>';
+    $('placeList').innerHTML=visible.length?visible.map(p=>'<div class="place"><div class="place-icon">'+icons[p.category]+'</div><div class="place-main"><div class="place-name">'+safe(p.name)+'</div><div class="place-meta">'+labels[p.category]+(p.date?' · '+safe(p.date):'')+(p.note?' · '+safe(p.note):'')+'</div></div><button class="ghost" data-go="'+p.id+'" aria-label="地図で見る">地図</button><button class="ghost" data-del="'+p.id+'" aria-label="削除">×</button></div>').join(''):'<div class="empty">このカテゴリーの場所はまだありません。</div>';
     document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{const p=places.find(x=>x.id===b.dataset.go);if(p){map.setView([p.lat,p.lng],16);layer.eachLayer(m=>{if(m.getLatLng().lat===p.lat&&m.getLatLng().lng===p.lng)m.openPopup()})}});
     document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{if(confirm('この場所を地図から削除しますか？')){places=places.filter(x=>x.id!==b.dataset.del);save();render()}});
   }
   function addPlace(lat,lng,name=''){
     pending={lat,lng,name};
-    $('searchResults').innerHTML='<div class="section-title">この場所を登録</div><div class="formgrid"><input class="field" id="placeName" placeholder="場所の名前" value="'+safe(name)+'"><select class="field" id="placeCategory"><option value="cafe">☕ カフェ</option><option value="restaurant">🍴 レストラン</option><option value="spot">🌿 おでかけ</option><option value="other">✦ その他</option></select><input class="field" id="placeNote" placeholder="ひとことメモ（任意）"><div class="row"><button id="savePlace">保存する</button><button class="secondary" id="cancelPlace">キャンセル</button></div></div>';
-    $('savePlace').onclick=()=>{const n=$('placeName').value.trim();if(!n){alert('場所の名前を入力してね');return}places.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:n,category:$('placeCategory').value,note:$('placeNote').value.trim(),lat,lng});save();render();$('searchResults').innerHTML='';};
+    $('searchResults').innerHTML='<div class="section-title">この場所を登録</div><div class="formgrid"><input class="field" id="placeName" placeholder="場所の名前" value="'+safe(name)+'"><select class="field" id="placeCategory"><option value="cafe">☕ カフェ</option><option value="restaurant">🍴 レストラン</option><option value="spot">🌿 おでかけ</option><option value="other">✦ その他</option></select><input class="field" id="placeNote" placeholder="ひとことメモ（任意）"><label class="hint" for="placeDate">行った日（任意）</label><input class="field" id="placeDate" type="date"><div class="row"><button id="savePlace">保存する</button><button class="secondary" id="cancelPlace">キャンセル</button></div></div>';
+    $('savePlace').onclick=()=>{const n=$('placeName').value.trim();if(!n){alert('場所の名前を入力してね');return}places.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:n,category:$('placeCategory').value,note:$('placeNote').value.trim(),date:$('placeDate').value,lat,lng});save();render();$('searchResults').innerHTML='';};
     $('cancelPlace').onclick=()=>$('searchResults').innerHTML='';
   }
   map.on('click',e=>addPlace(e.latlng.lat,e.latlng.lng));
@@ -102,6 +102,21 @@
   }
   $('searchBtn').onclick=search;$('searchInput').addEventListener('keydown',e=>{if(e.key==='Enter')search()});
   $('locateBtn').onclick=()=>{if(!navigator.geolocation){alert('この端末では現在地を取得できません');return}navigator.geolocation.getCurrentPosition(pos=>map.setView([pos.coords.latitude,pos.coords.longitude],15),()=>alert('現在地を取得できませんでした。位置情報の許可を確認してね。'))};
+  $('exportBtn').onclick=()=>{
+    const blob=new Blob([JSON.stringify(places,null,2)],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yorimichi-map.json';a.click();URL.revokeObjectURL(a.href);
+  };
+  $('importBtn').onclick=()=>$('importFile').click();
+  $('importFile').onchange=async e=>{
+    const file=e.target.files[0];if(!file)return;
+    try{
+      const data=JSON.parse(await file.text());
+      if(!Array.isArray(data)||data.some(p=>!p||typeof p.name!=='string'||!Number.isFinite(p.lat)||!Number.isFinite(p.lng)||!['cafe','restaurant','spot','other'].includes(p.category)))throw Error('invalid');
+      if(!confirm('現在の地図を読み込んだデータで置き換えますか？'))return;
+      places=data;save();render();alert('地図を読み込みました！');
+    }catch{alert('読み込めませんでした。わたしの地図のJSONファイルを選んでね。')}
+    finally{e.target.value=''}
+  };
   $('shareBtn').onclick=async()=>{
     try{
       const bytes=new TextEncoder().encode(JSON.stringify(places));let bin='';bytes.forEach(b=>bin+=String.fromCharCode(b));
