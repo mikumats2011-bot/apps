@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101827"><title>Market Lab｜株価シミュレーター</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1220;--panel:#121d2e;--panel2:#18263a;--line:#26364c;--text:#e8eef8;--muted:#91a2b9;--green:#36c995;--red:#ff7185;--blue:#78aaff}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 20% 0%,#1a2b43 0,transparent 45%),var(--bg);color:var(--text);font:14px system-ui,-apple-system,"Hiragino Kaku Gothic ProN",sans-serif}
+main{max-width:1180px;margin:auto;padding:24px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:22px}.brand{display:flex;align-items:center;gap:12px}.logo{width:44px;height:44px;display:grid;place-items:center;border-radius:14px;background:#213b57;font-size:23px}h1{font-size:21px;margin:0}.sub,.muted{color:var(--muted);font-size:12px}.tag{border:1px solid #31506d;color:#a9c8f2;padding:7px 10px;border-radius:30px;font-size:11px}
+.grid{display:grid;grid-template-columns:1.5fr 1fr;gap:14px}.card{background:linear-gradient(145deg,#152237,#111b2b);border:1px solid var(--line);border-radius:18px;padding:18px;min-width:0}.wide{grid-column:1/-1}.label{color:var(--muted);font-size:12px}.big{font-size:30px;font-weight:750;letter-spacing:-1px;margin:7px 0}.positive{color:var(--green)}.negative{color:var(--red)}.row{display:flex;align-items:center;justify-content:space-between;gap:10px}.controls{display:flex;gap:8px;flex-wrap:wrap}button,select,input{font:inherit}button{border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:10px 13px;border-radius:10px;cursor:pointer}button:hover{border-color:#6284ad}button.primary{background:#236b58;border-color:#287e67}button.sell{background:#743a4a;border-color:#91485a}button:disabled{opacity:.45;cursor:not-allowed}
+select,input{background:#0d1726;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px;min-width:0}.stock-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.stock-name{font-size:18px;font-weight:700}.chart{height:210px;margin-top:14px}.chart svg{width:100%;height:100%;overflow:visible}.stock-tabs{display:flex;gap:7px;flex-wrap:wrap;margin:13px 0}.stock-tabs button.active{background:#28476a;border-color:#4d78a8}.trade{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.trade button{width:100%}.field{display:grid;gap:6px}.field label{font-size:11px;color:var(--muted)}.metric{background:#0d1726;border:1px solid var(--line);border-radius:13px;padding:13px}.metric strong{display:block;font-size:19px;margin-top:5px}.list{display:grid;gap:8px}.item{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}.item:last-child{border:0}.pill{font-size:10px;padding:4px 7px;border-radius:20px;background:#24364c;color:#b8cbe3}.notice{background:#17263a;border:1px solid #294461;padding:11px 13px;border-radius:12px;color:#b7c9df;font-size:11px;line-height:1.7;margin-top:14px}.status{font-size:11px;color:var(--muted);min-height:18px}.empty{padding:20px;text-align:center;color:var(--muted)}.tiny{font-size:10px;color:var(--muted)}@media(max-width:760px){main{padding:15px}.grid{grid-template-columns:1fr}.wide{grid-column:auto}.top{align-items:flex-start}.big{font-size:26px}.chart{height:180px}}
+</style></head>
+<body><main>
+<header class="top"><div class="brand"><div class="logo">📈</div><div><h1>Market Lab</h1><div class="sub">リアル株価で学ぶ、仮想トレードラボ</div></div></div><span class="tag">PAPER TRADING · 仮想取引</span></header>
+<div class="grid">
+<section class="card">
+ <div class="row"><span class="label">選択中の銘柄</span><span class="pill" id="market">株価取得待ち</span></div>
+ <div class="stock-head"><div><div class="stock-name" id="stockName">トヨタ自動車</div><div class="muted" id="symbol">7203.T · 東証</div></div><div style="text-align:right"><div class="big" id="price">—</div><div id="change" class="muted">株価を読み込み中…</div></div></div>
+ <div class="stock-tabs" id="tabs"></div><div class="chart" id="chart"><div class="empty">株価データを読み込んでいます…</div></div>
+ <div class="row"><span class="tiny" id="updated">—</span><button id="refresh">↻ 株価更新</button></div>
+ <div class="status" id="status" role="status"></div>
+</section>
+<section class="card">
+ <div class="label">あなたの資産（仮想）</div><div class="big" id="total">¥1,000,000</div>
+ <div class="row"><span class="muted">評価損益</span><strong id="profit">¥0</strong></div>
+ <div class="row" style="margin-top:14px"><div class="metric" style="flex:1"><span class="label">現金</span><strong id="cash">¥1,000,000</strong></div><div class="metric" style="flex:1"><span class="label">保有株評価額</span><strong id="holdingsValue">¥0</strong></div></div>
+ <div class="notice">最初の仮想資金は100万円。実際のお金・証券口座とは一切つながっていません。</div>
+</section>
+<section class="card">
+ <div class="row"><strong>売買パネル</strong><span class="pill">現物・仮想</span></div>
+ <div class="trade">
+  <div class="field"><label for="qty">株数</label><input id="qty" type="number" min="1" step="1" value="10"></div>
+  <div class="field"><label>概算金額</label><div class="metric" id="estimate">—</div></div>
+  <button class="primary" id="buy">買う</button><button class="sell" id="sell">売る</button>
+ </div><div class="status" id="tradeStatus"></div>
+ <div class="notice">※価格は取得時点の参考値。売買価格は画面に表示された株価を使う簡易シミュレーションです。手数料・税金・スプレッドは未計算です。</div>
+</section>
+<section class="card">
+ <div class="row"><strong>保有銘柄</strong><span class="muted" id="holdingCount">0銘柄</span></div><div class="list" id="holdings"><div class="empty">まだ株を持っていません</div></div>
+</section>
+<section class="card wide">
+ <div class="row"><strong>取引履歴</strong><button id="reset">資産をリセット</button></div><div class="list" id="history"><div class="empty">取引履歴はまだありません</div></div>
+</section>
+</div>
+<div class="notice">データ提供：Yahoo Financeの公開チャート情報をプロキシ経由で参照しています。取得できない場合・市場休場中は、最後に取得できた価格またはエラー表示になります。株価データは遅延・欠損する場合があり、投資判断には使わないでください。</div>
+</main>
+<script>
+(()=>{
+const stocks=[
+ {s:'7203.T',n:'トヨタ自動車',m:'東証'},
+ {s:'6758.T',n:'ソニーグループ',m:'東証'},
+ {s:'9984.T',n:'ソフトバンクグループ',m:'東証'},
+ {s:'8306.T',n:'三菱UFJフィナンシャル・グループ',m:'東証'},
+ {s:'AAPL',n:'Apple',m:'NASDAQ'},
+ {s:'MSFT',n:'Microsoft',m:'NASDAQ'},
+ {s:'NVDA',n:'NVIDIA',m:'NASDAQ'},
+ {s:'GOOGL',n:'Alphabet',m:'NASDAQ'}
+];
+const KEY='market-lab-paper-v1';let state;try{state=JSON.parse(localStorage.getItem(KEY))}catch{}
+if(!state||typeof state.cash!=='number')state={cash:1000000,holdings:{},history:[]};
+let selected=0,quotes={};
+const $=id=>document.getElementById(id),yen=n=>'¥'+Math.round(n).toLocaleString('ja-JP');
+const persist=()=>localStorage.setItem(KEY,JSON.stringify(state));
+function renderTabs(){$('tabs').innerHTML=stocks.map((x,i)=>'<button data-i="'+i+'" class="'+(i===selected?'active':'')+'">'+x.s+'</button>').join('');document.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{selected=+b.dataset.i;renderQuote();})}
+function renderQuote(){
+ const st=stocks[selected],q=quotes[st.s];$('stockName').textContent=st.n;$('symbol').textContent=st.s+' · '+st.m;
+ $('market').textContent=q?'実株価データ':'データ未取得';
+ $('price').textContent=q?yen(q.price):'—';
+ $('change').textContent=q?(q.change>=0?'▲ ':'▼ ')+yen(Math.abs(q.change))+' ('+(q.percent>=0?'+':'')+q.percent.toFixed(2)+'%)':'取得できません';
+ $('change').className=q?(q.change>=0?'positive':'negative'):'muted';
+ $('updated').textContent=q?'最終取得：'+new Date(q.time).toLocaleString('ja-JP'):'価格データなし';
+ $('chart').innerHTML=q?drawChart(q.points):'<div class="empty">株価データを取得できません。少し待って更新してください。</div>';
+ $('estimate').textContent=q?yen(q.price*Math.max(1,+$('qty').value||1)):'—';
+ $('buy').disabled=!q;$('sell').disabled=!q;renderTabs();
+}
+function drawChart(points){
+ const vals=points.map(x=>x.v),min=Math.min(...vals),max=Math.max(...vals),w=700,h=190,p=8,span=max-min||1;
+ const coords=vals.map((v,i)=>(p+i/(Math.max(1,vals.length-1))*(w-p*2))+','+(h-p-(v-min)/span*(h-p*2))).join(' ');
+ const last=vals[vals.length-1],first=vals[0],color=last>=first?'#36c995':'#ff7185';
+ const y=h-p-(last-min)/span*(h-p*2);
+ return '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none"><defs><linearGradient id="fade" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="'+color+'" stop-opacity=".28"/><stop offset="1" stop-color="'+color+'" stop-opacity="0"/></linearGradient></defs><path d="M '+coords.replace(/ /g,' L ')+' L '+(w-p)+' '+h+' L '+p+' '+h+' Z" fill="url(#fade)"/><polyline points="'+coords+'" fill="none" stroke="'+color+'" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><line x1="0" y1="'+y+'" x2="'+w+'" y2="'+y+'" stroke="'+color+'" stroke-opacity=".35" stroke-dasharray="5 5"/></svg>';
+}
+async function fetchQuote(st){
+ const target='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(st.s)+'?range=5d&interval=30m';
+ const url='https://api.allorigins.win/raw?url='+encodeURIComponent(target);
+ const r=await fetch(url);if(!r.ok)throw Error('HTTP '+r.status);const data=await r.json();
+ const result=data.chart&&data.chart.result&&data.chart.result[0];if(!result)throw Error('データなし');
+ const q=result.indicators.quote[0],closes=(q.close||[]).map((v,i)=>v==null?null:{v,time:result.timestamp[i]}).filter(Boolean);
+ if(!closes.length)throw Error('価格なし');
+ const meta=result.meta,price=Number(meta.regularMarketPrice)||closes[closes.length-1].v,prev=Number(meta.chartPreviousClose)||Number(meta.previousClose)||closes[0].v;
+ return {price,change:price-prev,percent:(price-prev)/prev*100,time:Date.now(),points:closes.slice(-80)};
+}
+async function refresh(){
+ $('status').textContent='株価データを取得中…';$('refresh').disabled=true;
+ const st=stocks[selected];
+ try{quotes[st.s]=await fetchQuote(st);$('status').textContent='最新データを取得しました。';}
+ catch(e){$('status').textContent='取得失敗：通信制限やデータ提供元の状況により取得できないことがあります。';}
+ finally{$('refresh').disabled=false;renderQuote();renderPortfolio();}
+}
+function renderPortfolio(){
+ let value=0;const rows=[];
+ Object.entries(state.holdings).forEach(([sym,h])=>{const q=quotes[sym],price=q?q.price:h.avg,valueOne=price*h.qty;value+=valueOne;rows.push({sym,h,price,valueOne,profit:(price-h.avg)*h.qty})});
+ const total=state.cash+value,profit=rows.reduce((a,x)=>a+x.profit,0);
+ $('total').textContent=yen(total);$('cash').textContent=yen(state.cash);$('holdingsValue').textContent=yen(value);$('profit').textContent=(profit>=0?'+':'')+yen(profit);$('profit').className=profit>=0?'positive':'negative';
+ $('holdingCount').textContent=rows.length+'銘柄';
+ $('holdings').innerHTML=rows.length?rows.map(x=>'<div class="item"><div><strong>'+x.sym+'</strong><div class="tiny">'+x.h.qty+'株 · 平均 '+yen(x.h.avg)+'</div></div><div style="text-align:right"><strong>'+yen(x.valueOne)+'</strong><div class="'+(x.profit>=0?'positive':'negative')+' tiny">'+(x.profit>=0?'+':'')+yen(x.profit)+'</div></div></div>').join(''):'<div class="empty">まだ株を持っていません</div>';
+ $('history').innerHTML=state.history.length?state.history.slice().reverse().slice(0,30).map(x=>'<div class="item"><div><strong class="'+(x.type==='買い'?'positive':'negative')+'">'+x.type+'</strong> '+x.name+' <span class="tiny">'+x.qty+'株</span><div class="tiny">'+new Date(x.time).toLocaleString('ja-JP')+'</div></div><strong>'+yen(x.price*x.qty)+'</strong></div>').join(''):'<div class="empty">取引履歴はまだありません</div>';
+}
+function trade(type){
+ const st=stocks[selected],q=quotes[st.s],qty=Math.floor(+$('qty').value);
+ if(!q||!Number.isFinite(qty)||qty<1){$('tradeStatus').textContent='株数を1以上の整数で入力してください。';return}
+ const amount=q.price*qty,h=state.holdings[st.s]||{qty:0,avg:0};
+ if(type==='買い'){
+  if(amount>state.cash){$('tradeStatus').textContent='現金が足りません。株数を減らしてください。';return}
+  const next=h.qty+qty;h.avg=(h.avg*h.qty+amount)/next;h.qty=next;state.holdings[st.s]=h;state.cash-=amount;
+ }else{
+  if(qty>h.qty){$('tradeStatus').textContent='保有株数が足りません。';return}
+  h.qty-=qty;state.cash+=amount;if(h.qty===0)delete state.holdings[st.s];else state.holdings[st.s]=h;
+ }
+ state.history.push({type,name:st.n,symbol:st.s,qty,price:q.price,time:Date.now()});persist();$('tradeStatus').textContent=type+'を記録しました（'+qty+'株）';renderPortfolio();
+}
+$('qty').addEventListener('input',()=>{const q=quotes[stocks[selected].s];$('estimate').textContent=q?yen(q.price*Math.max(1,+$('qty').value||1)):'—'});
+$('buy').onclick=()=>trade('買い');$('sell').onclick=()=>trade('売り');$('refresh').onclick=refresh;
+$('reset').onclick=()=>{if(confirm('仮想資産・保有株・取引履歴をすべて初期化しますか？')){state={cash:1000000,holdings:{},history:[]};persist();renderPortfolio();$('tradeStatus').textContent='初期化しました。'}};
+renderTabs();renderQuote();renderPortfolio();refresh();
+})();
+</script></body></html>
